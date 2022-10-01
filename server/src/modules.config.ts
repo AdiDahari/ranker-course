@@ -1,5 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+
 import { RedisModule } from './redis.module';
 
 export const redisModule = RedisModule.registerAsync({
@@ -28,5 +30,16 @@ export const redisModule = RedisModule.registerAsync({
       },
     };
   },
+  inject: [ConfigService],
+});
+
+export const jwtModule = JwtModule.registerAsync({
+  imports: [ConfigModule],
+  useFactory: async (configService: ConfigService) => ({
+    secret: configService.get<string>('JWT_SECRET'),
+    signOptions: {
+      expiresIn: parseInt(configService.get<string>('POLL_DURATION')),
+    },
+  }),
   inject: [ConfigService],
 });
