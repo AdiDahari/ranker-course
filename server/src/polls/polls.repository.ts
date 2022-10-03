@@ -98,7 +98,7 @@ export class PollsRepository {
 
     try {
       await this.redisClient.send_command(
-        'JSON.GET',
+        'JSON.SET',
         key,
         participantPath,
         JSON.stringify(name),
@@ -113,7 +113,7 @@ export class PollsRepository {
       const poll = JSON.parse(pollJSON) as Poll;
 
       this.logger.debug(
-        `Current Participants for poll $${pollID}`,
+        `Current Participants for poll ${pollID}`,
         poll.participants,
       );
 

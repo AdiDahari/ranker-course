@@ -1,3 +1,5 @@
+import { Request } from '@nestjs/common';
+
 // Service
 
 export type CreatePollFields = {
@@ -31,3 +33,13 @@ export type AddParticipantData = {
   userID: string;
   name: string;
 };
+
+// Guard
+
+type AuthPayload = {
+  userID: string;
+  pollID: string;
+  name: string;
+};
+
+export type RequestWithAuth = Request & AuthPayload;
