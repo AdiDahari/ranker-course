@@ -2,21 +2,23 @@ import {
   BadRequestException,
   Logger,
   UseFilters,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import {
+  ConnectedSocket,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
 } from '@nestjs/websockets';
 import { Namespace } from 'socket.io';
 import { WsCatchAllFilter } from 'src/exceptions/ws-catch-all-filter';
-import { WsBadRequestException } from 'src/exceptions/ws-exceptions';
+import { GatewayAdminGuard } from './gateway-admin.guard';
 import { PollsService } from './polls.service';
 import { SocketWithAuth } from './types';
 
@@ -38,7 +40,7 @@ export class PollsGateway
     this.logger.log(`WebSocket Gateway initialized`);
   }
 
-  handleConnection(client: SocketWithAuth) {
+  async handleConnection(client: SocketWithAuth) {
     const sockets = this.io.sockets;
 
     this.logger.debug(
@@ -48,22 +50,42 @@ export class PollsGateway
     this.logger.log(`WS Client with id ${client.id} connected!`);
     this.logger.debug(`Number of connected sockets is ${sockets.size}`);
 
-    this.io.emit('hello', client.id);
+    const roomName = client.pollID;
+    await client.join(roomName);
+
+    const connectedClients = this.io.adapter.rooms?.get(roomName)?.size ?? 0;
+
+    this.logger.debug(`user ${client.userID} joined room ${roomName}`);
+    this.logger.debug(`Total clients in room ${roomName}: ${connectedClients}`);
+
+    const updatedPoll = await this.pollsService.addParticipant({
+      pollID: client.pollID,
+      userID: client.userID,
+      name: client.name,
+    });
+
+    this.io.to(roomName).emit('poll_updated', updatedPoll);
   }
 
-  handleDisconnect(client: SocketWithAuth) {
+  async handleDisconnect(client: SocketWithAuth) {
     const sockets = this.io.sockets;
-
-    this.logger.debug(
-      `Socket disconnected with userID: ${client.userID}, pollID: ${client.pollID}, and name: "${client.name}"`,
+    const { pollID, userID } = client;
+    const updatedPoll = await this.pollsService.removeParticipant(
+      pollID,
+      userID,
     );
 
-    this.logger.log(`client with id ${client.id} disconnected!`);
-    this.logger.debug(`Number of connected clients is ${sockets.size}`);
-  }
+    const roomName = client.pollID;
+    const clientCount = this.io.adapter.rooms?.get(roomName)?.size ?? 0;
 
-  @SubscribeMessage('test')
-  async test() {
-    throw new BadRequestException('text test');
+    this.logger.log(`Disconnected socket id: ${client.id}`);
+    this.logger.debug(`Number of connected sockets: ${sockets.size}`);
+    this.logger.debug(
+      `Number of connected clients to room ${roomName}: ${clientCount}`,
+    );
+
+    if (updatedPoll) {
+      this.io.to(pollID).emit('poll_updated', updatedPoll);
+    }
   }
 }
