@@ -88,4 +88,24 @@ export class PollsGateway
       this.io.to(pollID).emit('poll_updated', updatedPoll);
     }
   }
+
+  @UseGuards(GatewayAdminGuard)
+  @SubscribeMessage('remove_participant')
+  async removeParticipant(
+    @MessageBody('id') id: string,
+    @ConnectedSocket() client: SocketWithAuth,
+  ) {
+    this.logger.debug(
+      `Attempting to remove participant ${id} from poll ${client.pollID}`,
+    );
+
+    const updatedPoll = await this.pollsService.removeParticipant(
+      client.pollID,
+      id,
+    );
+
+    if (updatedPoll) {
+      this.io.to(client.pollID).emit('poll_updated', updatedPoll);
+    }
+  }
 }
