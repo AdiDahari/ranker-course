@@ -4,6 +4,7 @@ import { useSnapshot } from 'valtio';
 
 import Create from './pages/Create';
 import Join from './pages/Join';
+import { WaitingRoom } from './pages/WaitingRoom';
 import Welcome from './pages/Welcome';
 import { AppPage, state } from './state';
 
@@ -11,6 +12,7 @@ const routeConfig = {
   [AppPage.Welcome]: Welcome,
   [AppPage.Create]: Create,
   [AppPage.Join]: Join,
+  [AppPage.WaitingRoom]: WaitingRoom,
 };
 
 const Pages: React.FC = () => {
